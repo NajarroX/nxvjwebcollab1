@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ASCII MATRIX v7 // VJ COLLABORATIVE</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+        }
+
+        #ascii-canvas {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
+            background: #000;
+        }
+
+        .vj-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.88);
+            backdrop-filter: blur(24px);
+            border-top: 2px solid #00ff41;
+            z-index: 100;
+            transform: translateY(0);
+            transition: transform 0.3s;
+            max-height: 55vh;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+        }
+
+        .vj-panel.collapsed {
+            transform: translateY(calc(100% - 45px));
+        }
+
+        .vj-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.95);
+            border-bottom: 1px solid #00ff41;
+            cursor: pointer;
+        }
+
+        .vj-title {
+            color: #00ff41;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .vj-title span {
+            color: #fff;
+            margin-left: 10px;
+            font-size: 9px;
+        }
+
+        .vj-toggle {
+            color: #00ff41;
+            font-size: 18px;
+        }
+
+        .controllers-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-bottom: 1px solid #00ff4133;
+            flex-wrap: wrap;
+        }
+
+        .controller-badge {
+            background: #00ff4122;
+            border: 1px solid #00ff41;
+            border-radius: 20px;
+            padding: 3px 10px;
+            font-size: 9px;
+            color: #00ff41;
+        }
+
+        .device-status {
+            margin-left: auto;
+            display: flex;
+            gap: 15px;
+        }
+
+        .device-led {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 8px;
+            color: #88ff88;
+        }
+
+        .led {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #333;
+        }
+
+        .led.on {
+            background: #00ff41;
+            box-shadow: 0 0 6px #00ff41;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        .panel-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding: 16px;
+        }
+
+        .cyber-card {
+            background: rgba(0, 0, 0, 0.75);
+            border-left: 3px solid #00ff41;
+            padding: 10px 14px;
+            min-width: 170px;
+            flex: 1 1 auto;
+        }
+
+        .cyber-card h4 {
+            font-size: 9px;
+            letter-spacing: 2px;
+            font-weight: 700;
+            color: #00ff41;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            border-bottom: 1.5px solid #00ff41;
+            display: inline-block;
+        }
+
+        .ctrl-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        .ctrl-row label {
+            font-size: 8px;
+            font-weight: bold;
+            color: #88ff88;
+            min-width: 65px;
+            text-transform: uppercase;
+        }
+
+        .ctrl-row input[type="range"] {
+            flex: 1;
+            height: 3px;
+            -webkit-appearance: none;
+            background: #1a1a1a;
+        }
+        .ctrl-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            background: #00ff41;
+            border-radius: 0;
+            cursor: pointer;
+            box-shadow: 0 0 6px #00ff41;
+        }
+
+        .ctrl-row select {
+            background: #050505;
+            border: 1px solid #00ff41;
+            color: #00ff41;
+            font-size: 8px;
+            padding: 4px 8px;
+        }
+
+        .ctrl-row button {
+            background: transparent;
+            border: 1px solid #00ff41;
+            color: #00ff41;
+            font-size: 8px;
+            padding: 4px 10px;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+        .ctrl-row button:active {
+            background: #00ff41;
+            color: #000;
+        }
+
+        .status-led {
+            font-size: 7px;
+            background: #000;
+            padding: 3px 8px;
+            border: 1px solid #00ff41;
+            color: #00ff41;
+            display: inline-block;
+        }
+
+        .resolution-badge {
+            font-size: 7px;
+            background: #00ff4122;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 8px;
+        }
+
+        .toast-msg {
+            position: fixed;
+            bottom: 50%;
+            left: 50%;
+            transform: translate(-50%, -40%);
+            background: #000000ee;
+            border: 2px solid #00ff41;
+            padding: 8px 20px;
+            color: #00ff41;
+            z-index: 400;
+            animation: fadeOut 0.8s forwards;
+            pointer-events: none;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+
+        @keyframes fadeOut {
+            0% { opacity: 0; transform: translate(-50%, -40%) scale(0.95);}
+            20% { opacity: 1; }
+            100% { opacity: 0; transform: translate(-50%, -70%) scale(1.05);}
+        }
+
+        @media (max-width: 700px) {
+            .panel-grid { gap: 8px; padding: 12px; }
+            .cyber-card { min-width: 100%; }
+            .device-status { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="ascii-canvas"></canvas>
+
+    <div class="vj-panel" id="vjPanel">
+        <div class="vj-header" id="panelHeader">
+            <div class="vj-title">🎛️ VJ CONTROL PANEL <span id="controllersStatus">—</span></div>
+            <div class="vj-toggle">▲</div>
+        </div>
+        <div class="controllers-bar">
+            <span>🎮 CONECTADOS:</span>
+            <span id="controllerList">—</span>
+            <div class="device-status">
+                <div class="device-led"><span class="led" id="webcamLed"></span> WEBCAM</div>
+                <div class="device-led"><span class="led" id="micLed"></span> MIC</div>
+            </div>
+        </div>
+        <div class="panel-grid" id="vjControls">
+            <!-- Los controles se generan dinámicamente -->
+        </div>
+    </div>
+
+    <script type="importmap">
+        { "imports": { "three": "https://unpkg.com/three@0.128.0/build/three.module.js" } }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        
+        // ========== WEBSOCKET ==========
+        const WS_URL = window.location.protocol === 'https:' ? `wss://${window.location.host}` : `ws://${window.location.host}`;
+        let socket = null;
+        
+        // ========== THREE.JS ==========
+        const canvasElement = document.getElementById('ascii-canvas');
+        const ctx = canvasElement.getContext('2d');
+        
+        const renderScene = new THREE.Scene();
+        renderScene.background = new THREE.Color(0x000000);
+        const camera3D = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+        camera3D.position.set(0, 0, 5.5);
+        const webglRenderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+        webglRenderer.setSize(200, 150);
+        
+        // ========== PARTÍCULAS ==========
+        const POINTS_COUNT = 22000;
+        const positions = new Float32Array(POINTS_COUNT * 3);
+        const originalPositions = [];
+        
+        for (let i = 0; i < POINTS_COUNT; i++) {
+            const theta = Math.random() * Math.PI * 2;
+            const phi = Math.acos(2 * Math.random() - 1);
+            const radius = 2.2 + (Math.random() - 0.5) * 0.3;
+            let x = radius * Math.sin(phi) * Math.cos(theta);
+            let y = radius * Math.sin(phi) * Math.sin(theta) * 0.9;
+            let z = radius * Math.cos(phi);
+            x += (Math.random() - 0.5) * 0.1;
+            y += (Math.random() - 0.5) * 0.1;
+            z += (Math.random() - 0.5) * 0.1;
+            positions[i*3] = x;
+            positions[i*3+1] = y;
+            positions[i*3+2] = z;
+            originalPositions.push(new THREE.Vector3(x, y, z));
+        }
+        
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        const pointsMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.045 });
+        const pointsSystem = new THREE.Points(geometry, pointsMaterial);
+        renderScene.add(pointsSystem);
+        
+        // ========== CHARSETS ==========
+        const charSets = {
+            matrix: "01アイウエオカキクケコサシスセソタチツテト",
+            dense: "█▓▒░@#$%&?*+;:,. ",
+            binary: "10",
+            full: "█▓▒░@#$%&?*+;:,.01アイウエオカキクケコ"
+        };
+        let currentCharset = charSets.full;
+        
+        // ========== VARIABLES ==========
+        let flameIntensity = 1.0, noiseDeform = 0.6, deformSpeed = 1.0;
+        let rotX = 0.3, rotY = 0.5, zoom = 5.5;
+        let charDensity = 1.0, masterHue = 180, masterSat = 1.4, masterLight = 1.0;
+        let colorMode = 'full';
+        let warpIntensity = 0.5;
+        let webcamMix = 0.5;
+        let timeAnim = 0;
+        let glitchTimeout = null;
+        
+        // Resolución ASCII (número de columnas/rows)
+        let asciiCols = 120, asciiRows = 80;
+        let targetCols = 120, targetRows = 80;
+        let resolutionFactor = 1.0; // 0.5 = baja, 1.0 = media, 1.5 = alta, 2.0 = máxima
+        
+        // ========== WEBCAM ==========
+        let webcamActive = false;
+        let webcamStream = null;
+        let webcamVideo = null;
+        
+        async function toggleWebcam() {
+            if (webcamActive) {
+                if (webcamStream) {
+                    webcamStream.getTracks().forEach(track => track.stop());
+                }
+                webcamActive = false;
+                webcamVideo = null;
+                updateDeviceUI();
+                showToast('📷 WEBCAM OFF');
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({ type: 'param_update', param: 'webcamActive', value: false }));
+                }
+                return;
+            }
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                webcamStream = stream;
+                webcamVideo = document.createElement('video');
+                webcamVideo.srcObject = stream;
+                webcamVideo.playsInline = true;
+                await webcamVideo.play();
+                webcamActive = true;
+                updateDeviceUI();
+                showToast('📷 WEBCAM ON');
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({ type: 'param_update', param: 'webcamActive', value: true }));
+                }
+            } catch(e) { 
+                showToast('❌ Error cámara');
+                console.error(e);
+            }
+        }
+        
+        // ========== AUDIO REACTIVO ==========
+        let audioActive = false;
+        let audioCtx = null;
+        let analyser = null;
+        let mediaStream = null;
+        let audioBuffer = new Uint8Array(128);
+        let audioBand = 0, audioAmp = 1.3;
+        let smoothFactor = 0.75;
+        let rawAudioVal = 0.3;
+        let smoothAudioVal = 0.3;
+        
+        function getRawAudioStrength() {
+            if (!audioActive || !analyser) return 0.3;
+            analyser.getByteFrequencyData(audioBuffer);
+            let start = 0, end = 40;
+            if (audioBand === 1) { start = 40; end = 85; }
+            if (audioBand === 2) { start = 85; end = 128; }
+            let sum = 0;
+            for (let i = start; i < end; i++) sum += audioBuffer[i];
+            const avg = sum / (end - start) / 255;
+            return Math.min(1.4, avg * 1.7) * audioAmp;
+        }
+        
+        function getSmoothAudioStrength() {
+            rawAudioVal = getRawAudioStrength();
+            smoothAudioVal = smoothAudioVal * smoothFactor + rawAudioVal * (1 - smoothFactor);
+            return Math.min(1.4, smoothAudioVal);
+        }
+        
+        async function toggleMicrophone() {
+            if (audioActive) {
+                if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+                if (audioCtx) await audioCtx.close();
+                audioActive = false;
+                analyser = null;
+                smoothAudioVal = 0.3;
+                updateDeviceUI();
+                showToast('🎤 MIC OFF');
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({ type: 'param_update', param: 'audioActive', value: false }));
+                }
+                return;
+            }
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioCtx.createMediaStreamSource(stream);
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 256;
+                source.connect(analyser);
+                await audioCtx.resume();
+                mediaStream = stream;
+                audioActive = true;
+                updateDeviceUI();
+                showToast('🎤 MIC ON - Audio reactivo activado');
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({ type: 'param_update', param: 'audioActive', value: true }));
+                }
+            } catch(e) { 
+                showToast('❌ Error micrófono');
+                console.error(e);
+            }
+        }
+        
+        function updateDeviceUI() {
+            const webcamLed = document.getElementById('webcamLed');
+            const micLed = document.getElementById('micLed');
+            if (webcamLed) webcamLed.className = webcamActive ? 'led on' : 'led';
+            if (micLed) micLed.className = audioActive ? 'led on' : 'led';
+        }
+        
+        function captureWebcamFrame(width, height) {
+            if (!webcamActive || !webcamVideo || webcamVideo.readyState < 2) return null;
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = width;
+            tempCanvas.height = height;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(webcamVideo, 0, 0, width, height);
+            return tempCtx.getImageData(0, 0, width, height);
+        }
+        
+        // ========== DEFORMACIÓN ==========
+        function updateDeformation() {
+            const posAttr = geometry.attributes.position.array;
+            const audioVal = audioActive ? getSmoothAudioStrength() : 0.3;
+            
+            const fireFactor = flameIntensity * (0.5 + audioVal * 1.1);
+            const noiseFactor = noiseDeform * (0.5 + audioVal * 0.9);
+            const speed = deformSpeed * (0.6 + audioVal * 0.6);
+            
+            for (let i = 0; i < POINTS_COUNT; i++) {
+                const orig = originalPositions[i];
+                const fireWaveY = Math.sin(orig.y * 2.8 + timeAnim * 3.5) * fireFactor * 0.35;
+                const fireWaveRad = Math.sin(orig.x * 2.2 + orig.z * 2.2 + timeAnim * 4.0) * fireFactor * 0.25;
+                const nx = Math.sin(orig.x * 1.2 + timeAnim * speed) * Math.cos(orig.z * 1.0 + timeAnim * 0.5);
+                const ny = Math.sin(orig.y * 1.6 + timeAnim * speed * 1.2) * Math.cos(orig.x * 1.1 + timeAnim * 0.8);
+                const nz = Math.sin(orig.z * 1.3 + timeAnim * speed * 0.8) * Math.cos(orig.y * 1.2 + timeAnim * 0.6);
+                let newX = orig.x + nx * noiseFactor * 0.55 + fireWaveRad * 0.45;
+                let newY = orig.y + ny * noiseFactor * 0.65 + fireWaveY * 0.7;
+                let newZ = orig.z + nz * noiseFactor * 0.55 + fireWaveRad * 0.35;
+                const breath = 1 + Math.sin(timeAnim * (2.5 + audioVal * 1.2)) * 0.035 * fireFactor;
+                newX *= breath; newY *= breath; newZ *= breath;
+                posAttr[i*3] = newX; posAttr[i*3+1] = newY; posAttr[i*3+2] = newZ;
+            }
+            geometry.attributes.position.needsUpdate = true;
+        }
+        
+        function hslToRgb(h, s, l) {
+            h = ((h % 360) + 360) % 360;
+            const c = (1 - Math.abs(2 * l - 1)) * s;
+            const hp = h / 60;
+            const x = c * (1 - Math.abs((hp % 2) - 1));
+            let r1, g1, b1;
+            if (hp <= 1) { r1 = c; g1 = x; b1 = 0; }
+            else if (hp <= 2) { r1 = x; g1 = c; b1 = 0; }
+            else if (hp <= 3) { r1 = 0; g1 = c; b1 = x; }
+            else if (hp <= 4) { r1 = 0; g1 = x; b1 = c; }
+            else if (hp <= 5) { r1 = x; g1 = 0; b1 = c; }
+            else { r1 = c; g1 = 0; b1 = x; }
+            const m = l - c / 2;
+            return { r: Math.min(1, r1 + m), g: Math.min(1, g1 + m), b: Math.min(1, b1 + m) };
+        }
+        
+        // ========== RENDER ASCII CON RESOLUCIÓN AJUSTABLE ==========
+        function setResolution(factor) {
+            resolutionFactor = Math.max(0.4, Math.min(2.0, factor));
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            // Base: 160x100 como máxima calidad
+            targetCols = Math.floor(160 * resolutionFactor);
+            targetRows = Math.floor(100 * resolutionFactor);
+            targetCols = Math.min(200, Math.max(40, targetCols));
+            targetRows = Math.min(120, Math.max(25, targetRows));
+            resizeCanvas();
+        }
+        
+        function resizeCanvas() {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            canvasElement.width = w;
+            canvasElement.height = h;
+            
+            // Calcular columnas y filas basado en densidad y factor de resolución
+            asciiCols = Math.floor(w / (12 / charDensity));
+            asciiRows = Math.floor(h / (22 / charDensity));
+            
+            // Aplicar factor de resolución (más bajo = más rendimiento)
+            asciiCols = Math.floor(asciiCols * resolutionFactor);
+            asciiRows = Math.floor(asciiRows * resolutionFactor);
+            
+            asciiCols = Math.min(160, Math.max(30, asciiCols));
+            asciiRows = Math.min(100, Math.max(20, asciiRows));
+            
+            webglRenderer.setSize(asciiCols, asciiRows);
+            camera3D.aspect = asciiCols / asciiRows;
+            camera3D.updateProjectionMatrix();
+            
+            // Actualizar badge de resolución
+            const resBadge = document.getElementById('resolutionBadge');
+            if (resBadge) resBadge.textContent = `${asciiCols}x${asciiRows}`;
+        }
+        
+        function renderASCII() {
+            if (asciiCols <= 0 || asciiRows <= 0) return;
+            
+            webglRenderer.render(renderScene, camera3D);
+            const glCanvas = webglRenderer.domElement;
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = asciiCols;
+            tempCanvas.height = asciiRows;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(glCanvas, 0, 0, asciiCols, asciiRows);
+            const imgData = tempCtx.getImageData(0, 0, asciiCols, asciiRows);
+            const data = imgData.data;
+            
+            let webcamData = null;
+            if (webcamActive && webcamMix > 0) {
+                webcamData = captureWebcamFrame(asciiCols, asciiRows);
+            }
+            
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvasElement.width, canvasElement.height);
+            
+            const charW = canvasElement.width / asciiCols;
+            const charH = canvasElement.height / asciiRows;
+            const chars = currentCharset;
+            const audioVal = audioActive ? smoothAudioVal : 0.3;
+            const warp = warpIntensity * (0.5 + audioVal * 0.8);
+            
+            const fontSize = Math.max(10, Math.min(24, charH * 0.75));
+            ctx.font = `${fontSize}px "Courier New", monospace`;
+            ctx.textBaseline = 'middle';
+            ctx.textAlign = 'center';
+            
+            for (let y = 0; y < asciiRows; y++) {
+                for (let x = 0; x < asciiCols; x++) {
+                    const idx = (y * asciiCols + x) * 4;
+                    let brightness = (data[idx] + data[idx+1] + data[idx+2]) / 3;
+                    
+                    // Warp effect (suave, sin impacto en FPS)
+                    let warpX = x + Math.sin(y * 0.12 + timeAnim * 3.5) * warp * 1.8;
+                    let warpY = y + Math.cos(x * 0.12 + timeAnim * 3.0) * warp * 1.5;
+                    warpX = Math.min(asciiCols - 1, Math.max(0, warpX));
+                    warpY = Math.min(asciiRows - 1, Math.max(0, warpY));
+                    const warpIdx = (Math.floor(warpY) * asciiCols + Math.floor(warpX)) * 4;
+                    brightness = (data[warpIdx] + data[warpIdx+1] + data[warpIdx+2]) / 3 || brightness;
+                    
+                    if (webcamData && webcamMix > 0) {
+                        const camIdx = (y * asciiCols + x) * 4;
+                        const camBright = (webcamData.data[camIdx] + webcamData.data[camIdx+1] + webcamData.data[camIdx+2]) / 3;
+                        brightness = brightness * (1 - webcamMix) + camBright * webcamMix;
+                    }
+                    
+                    const charIdx = Math.floor(brightness / 255 * (chars.length - 1) * charDensity);
+                    const char = chars[Math.min(chars.length - 1, Math.max(0, charIdx))];
+                    const px = x * charW + charW / 2;
+                    const py = y * charH + charH / 2;
+                    
+                    if (colorMode === 'mono') {
+                        const val = (brightness / 255) * masterLight;
+                        const gray = Math.min(255, Math.floor(val * 255));
+                        ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray})`;
+                    } else {
+                        let hue = masterHue;
+                        let sat = masterSat;
+                        let light = masterLight * (0.4 + brightness / 255 * 0.8);
+                        if (colorMode === 'colorama') {
+                            hue = (masterHue + brightness * 1.5 + timeAnim * 25) % 360;
+                        }
+                        const rgb = hslToRgb(hue, sat, light);
+                        ctx.fillStyle = `rgb(${Math.floor(rgb.r * 255)}, ${Math.floor(rgb.g * 255)}, ${Math.floor(rgb.b * 255)})`;
+                    }
+                    ctx.fillText(char, px, py);
+                }
+            }
+        }
+        
+        // ========== CAPTURE ==========
+        function capturePNG() {
+            const link = document.createElement('a');
+            link.download = `ascii_${Date.now()}.png`;
+            link.href = canvasElement.toDataURL();
+            link.click();
+            showToast('📸 PNG guardado');
+        }
+        
+        let mediaRecorder = null;
+        let recordingChunks = [];
+        let isRecording = false;
+        
+        async function startRecording() {
+            if (isRecording) return;
+            try {
+                const stream = canvasElement.captureStream(30);
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+                recordingChunks = [];
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) recordingChunks.push(e.data);
+                };
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordingChunks, { type: 'video/webm' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `ascii_${Date.now()}.webm`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    showToast('🎬 Video guardado');
+                    isRecording = false;
+                    const recBtn = document.getElementById('recordBtn');
+                    if (recBtn) recBtn.textContent = 'REC';
+                };
+                mediaRecorder.start(1000);
+                isRecording = true;
+                const recBtn = document.getElementById('recordBtn');
+                if (recBtn) recBtn.textContent = '🔴 REC';
+                showToast('🎥 Grabando...');
+            } catch(e) {
+                showToast('❌ Error al grabar');
+                console.error(e);
+            }
+        }
+        
+        function stopRecording() {
+            if (mediaRecorder && isRecording && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+            }
+        }
+        
+        // ========== WEBSOCKET ==========
+        function connectWebSocket() {
+            socket = new WebSocket(WS_URL);
+            socket.onopen = () => {
+                socket.send(JSON.stringify({ type: 'register_vj' }));
+                showToast('🎛️ VJ MODE • Conectado');
+            };
+            socket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleMessage(data);
+                } catch(e) {}
+            };
+            socket.onclose = () => setTimeout(connectWebSocket, 2000);
+        }
+        
+        function handleMessage(data) {
+            switch(data.type) {
+                case 'full_state':
+                case 'state_update':
+                    updateLocalState(data.state);
+                    break;
+                case 'controllers_update':
+                    updateControllersUI(data.controllers, data.count);
+                    break;
+                case 'glitch_burst':
+                    triggerGlitchBurst(data.intensity);
+                    break;
+            }
+        }
+        
+        function updateLocalState(state) {
+            if (!state) return;
+            flameIntensity = state.flameIntensity ?? flameIntensity;
+            noiseDeform = state.noiseDeform ?? noiseDeform;
+            deformSpeed = state.deformSpeed ?? deformSpeed;
+            rotX = state.rotX ?? rotX;
+            rotY = state.rotY ?? rotY;
+            zoom = state.zoom ?? zoom;
+            charDensity = state.charDensity ?? charDensity;
+            if (state.charset) currentCharset = charSets[state.charset] || charSets.full;
+            masterHue = state.masterHue ?? masterHue;
+            masterSat = state.masterSat ?? masterSat;
+            masterLight = state.masterLight ?? masterLight;
+            colorMode = state.colorMode ?? colorMode;
+            warpIntensity = state.warpIntensity ?? warpIntensity;
+            audioBand = state.audioBand ?? audioBand;
+            audioAmp = state.audioAmp ?? audioAmp;
+            smoothFactor = state.smoothFactor ?? smoothFactor;
+            webcamMix = state.webcamMix ?? webcamMix;
+            
+            camera3D.position.z = zoom;
+            resizeCanvas();
+            
+            // Sincronizar controles UI
+            document.getElementById('flameIntensity')?.setAttribute('value', flameIntensity);
+            document.getElementById('noiseDeform')?.setAttribute('value', noiseDeform);
+            document.getElementById('deformSpeed')?.setAttribute('value', deformSpeed);
+            document.getElementById('rotX')?.setAttribute('value', rotX);
+            document.getElementById('rotY')?.setAttribute('value', rotY);
+            document.getElementById('zoom')?.setAttribute('value', zoom);
+            document.getElementById('charDensity')?.setAttribute('value', charDensity);
+            document.getElementById('masterHue')?.setAttribute('value', masterHue);
+            document.getElementById('masterSat')?.setAttribute('value', masterSat);
+            document.getElementById('masterLight')?.setAttribute('value', masterLight);
+            document.getElementById('warpIntensity')?.setAttribute('value', warpIntensity);
+            document.getElementById('webcamMix')?.setAttribute('value', webcamMix);
+            document.getElementById('resolutionSlider')?.setAttribute('value', resolutionFactor);
+        }
+        
+        function triggerGlitchBurst(intensity) {
+            const originalWarp = warpIntensity;
+            warpIntensity = 1.5 * (intensity || 1);
+            if (glitchTimeout) clearTimeout(glitchTimeout);
+            glitchTimeout = setTimeout(() => {
+                warpIntensity = originalWarp;
+            }, 200);
+            showToast('💥 GLITCH BURST');
+        }
+        
+        function showToast(msg) {
+            const div = document.createElement('div');
+            div.className = 'toast-msg';
+            div.innerText = msg;
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 800);
+        }
+        
+        function updateControllersUI(controllers, count) {
+            const container = document.getElementById('controllerList');
+            const statusSpan = document.getElementById('controllersStatus');
+            if (statusSpan) statusSpan.innerHTML = `🎮 ${count || 0}`;
+            if (container) {
+                if (controllers && controllers.length > 0) {
+                    container.innerHTML = controllers.map(c => `<span class="controller-badge">${escapeHtml(c.name)}</span>`).join('');
+                } else {
+                    container.innerHTML = '<span class="controller-badge">—</span>';
+                }
+            }
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function sendParamUpdate(param, value) {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: 'param_update', param, value }));
+            }
+        }
+        
+        // ========== GENERAR UI DE CONTROL ==========
+        function generateControls() {
+            const container = document.getElementById('vjControls');
+            container.innerHTML = `
+                <div class="cyber-card">
+                    <h4>🔥 ORGANIC FLAME</h4>
+                    <div class="ctrl-row"><label>FLAME</label><input type="range" id="flameIntensity" min="0" max="2.0" step="0.01" value="${flameIntensity}"></div>
+                    <div class="ctrl-row"><label>NOISE</label><input type="range" id="noiseDeform" min="0" max="1.5" step="0.01" value="${noiseDeform}"></div>
+                    <div class="ctrl-row"><label>SPEED</label><input type="range" id="deformSpeed" min="0" max="2.0" step="0.02" value="${deformSpeed}"></div>
+                    <div class="ctrl-row"><label>ROT X</label><input type="range" id="rotX" min="-1.5" max="1.5" step="0.01" value="${rotX}"></div>
+                    <div class="ctrl-row"><label>ROT Y</label><input type="range" id="rotY" min="-1.5" max="1.5" step="0.01" value="${rotY}"></div>
+                    <div class="ctrl-row"><label>ZOOM</label><input type="range" id="zoom" min="3" max="9" step="0.1" value="${zoom}"></div>
+                </div>
+                <div class="cyber-card">
+                    <h4>🎨 ASCII + CHROMA</h4>
+                    <div class="ctrl-row"><label>DENSITY</label><input type="range" id="charDensity" min="0.3" max="1.8" step="0.01" value="${charDensity}"></div>
+                    <div class="ctrl-row"><label>RESOLUCIÓN</label><input type="range" id="resolutionSlider" min="0.4" max="1.6" step="0.02" value="${resolutionFactor}"></div>
+                    <div class="ctrl-row"><label>CHARSET</label><select id="charSetSelect"><option value="matrix">MATRIX</option><option value="dense">DENSE</option><option value="binary">BINARY</option><option value="full" selected>FULL</option></select></div>
+                    <div class="ctrl-row"><label>HUE</label><input type="range" id="masterHue" min="0" max="360" step="1" value="${masterHue}"></div>
+                    <div class="ctrl-row"><label>SAT</label><input type="range" id="masterSat" min="0" max="2.0" step="0.01" value="${masterSat}"></div>
+                    <div class="ctrl-row"><label>BRIGHT</label><input type="range" id="masterLight" min="0.3" max="2.0" step="0.02" value="${masterLight}"></div>
+                    <div class="ctrl-row"><button id="monoBtn">MONO</button><button id="coloramaBtn">COLORAMA</button></div>
+                    <div class="ctrl-row"><span class="resolution-badge" id="resolutionBadge">${asciiCols}x${asciiRows}</span></div>
+                </div>
+                <div class="cyber-card">
+                    <h4>🌀 WARP + GLITCH</h4>
+                    <div class="ctrl-row"><label>WARP</label><input type="range" id="warpIntensity" min="0" max="1.5" step="0.01" value="${warpIntensity}"></div>
+                    <div class="ctrl-row"><button id="glitchBurstBtn">GLITCH BURST</button></div>
+                </div>
+                <div class="cyber-card">
+                    <h4>🎛️ AUDIO REACT</h4>
+                    <div class="ctrl-row"><button id="audioMicBtn">${audioActive ? 'MIC ON' : 'MIC OFF'}</button><select id="audioBand"><option value="0">BASS</option><option value="1">MID</option><option value="2">HIGH</option></select></div>
+                    <div class="ctrl-row"><label>SENS</label><input type="range" id="audioAmp" min="0" max="2.2" step="0.02" value="${audioAmp}"></div>
+                    <div class="ctrl-row"><label>SMOOTH</label><input type="range" id="smoothFactor" min="0.1" max="0.95" step="0.01" value="${smoothFactor}"></div>
+                    <div class="status-led" id="audioStatus">${audioActive ? 'ON' : 'OFF'}</div>
+                </div>
+                <div class="cyber-card">
+                    <h4>📹 WEBCAM MIX</h4>
+                    <div class="ctrl-row"><button id="webcamBtn">${webcamActive ? 'WEBCAM OFF' : 'WEBCAM ON'}</button></div>
+                    <div class="ctrl-row"><label>MIX</label><input type="range" id="webcamMix" min="0" max="1.0" step="0.01" value="${webcamMix}"></div>
+                    <div class="status-led" id="webcamStatus">${webcamActive ? 'ON' : 'OFF'}</div>
+                </div>
+                <div class="cyber-card">
+                    <h4>📀 CAPTURE</h4>
+                    <div class="ctrl-row"><button id="pngBtn">📸 PNG</button><button id="recordBtn">REC</button><button id="stopBtn">⏹️ STOP</button></div>
+                    <div class="ctrl-row"><button id="hideUiBtn">HIDE UI</button><button id="resetBtn">RESET</button></div>
+                </div>
+            `;
+            
+            // Bindear eventos
+            document.getElementById('flameIntensity')?.addEventListener('input', (e) => { flameIntensity = parseFloat(e.target.value); sendParamUpdate('flameIntensity', flameIntensity); });
+            document.getElementById('noiseDeform')?.addEventListener('input', (e) => { noiseDeform = parseFloat(e.target.value); sendParamUpdate('noiseDeform', noiseDeform); });
+            document.getElementById('deformSpeed')?.addEventListener('input', (e) => { deformSpeed = parseFloat(e.target.value); sendParamUpdate('deformSpeed', deformSpeed); });
+            document.getElementById('rotX')?.addEventListener('input', (e) => { rotX = parseFloat(e.target.value); sendParamUpdate('rotX', rotX); });
+            document.getElementById('rotY')?.addEventListener('input', (e) => { rotY = parseFloat(e.target.value); sendParamUpdate('rotY', rotY); });
+            document.getElementById('zoom')?.addEventListener('input', (e) => { zoom = parseFloat(e.target.value); camera3D.position.z = zoom; sendParamUpdate('zoom', zoom); });
+            document.getElementById('charDensity')?.addEventListener('input', (e) => { charDensity = parseFloat(e.target.value); resizeCanvas(); sendParamUpdate('charDensity', charDensity); });
+            document.getElementById('resolutionSlider')?.addEventListener('input', (e) => { resolutionFactor = parseFloat(e.target.value); setResolution(resolutionFactor); sendParamUpdate('resolutionFactor', resolutionFactor); });
+            document.getElementById('charSetSelect')?.addEventListener('change', (e) => { currentCharset = charSets[e.target.value]; sendParamUpdate('charset', e.target.value); });
+            document.getElementById('masterHue')?.addEventListener('input', (e) => { masterHue = parseFloat(e.target.value); sendParamUpdate('masterHue', masterHue); });
+            document.getElementById('masterSat')?.addEventListener('input', (e) => { masterSat = parseFloat(e.target.value); sendParamUpdate('masterSat', masterSat); });
+            document.getElementById('masterLight')?.addEventListener('input', (e) => { masterLight = parseFloat(e.target.value); sendParamUpdate('masterLight', masterLight); });
+            document.getElementById('warpIntensity')?.addEventListener('input', (e) => { warpIntensity = parseFloat(e.target.value); sendParamUpdate('warpIntensity', warpIntensity); });
+            document.getElementById('webcamMix')?.addEventListener('input', (e) => { webcamMix = parseFloat(e.target.value); sendParamUpdate('webcamMix', webcamMix); });
+            document.getElementById('audioAmp')?.addEventListener('input', (e) => { audioAmp = parseFloat(e.target.value); sendParamUpdate('audioAmp', audioAmp); });
+            document.getElementById('smoothFactor')?.addEventListener('input', (e) => { smoothFactor = parseFloat(e.target.value); sendParamUpdate('smoothFactor', smoothFactor); });
+            document.getElementById('audioBand')?.addEventListener('change', (e) => { audioBand = parseInt(e.target.value); sendParamUpdate('audioBand', audioBand); });
+            
+            document.getElementById('monoBtn')?.addEventListener('click', () => { colorMode = 'mono'; sendParamUpdate('colorMode', 'mono'); showToast('MONOCHROME'); });
+            document.getElementById('coloramaBtn')?.addEventListener('click', () => { colorMode = 'colorama'; sendParamUpdate('colorMode', 'colorama'); showToast('COLORAMA'); });
+            document.getElementById('glitchBurstBtn')?.addEventListener('click', () => {
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({ type: 'glitch_burst', intensity: 1.0 }));
+                }
+                triggerGlitchBurst(1.0);
+            });
+            
+            document.getElementById('audioMicBtn')?.addEventListener('click', toggleMicrophone);
+            document.getElementById('webcamBtn')?.addEventListener('click', toggleWebcam);
+            
+            document.getElementById('pngBtn')?.addEventListener('click', capturePNG);
+            document.getElementById('recordBtn')?.addEventListener('click', startRecording);
+            document.getElementById('stopBtn')?.addEventListener('click', stopRecording);
+            document.getElementById('hideUiBtn')?.addEventListener('click', () => document.getElementById('vjPanel')?.classList.toggle('collapsed'));
+            document.getElementById('resetBtn')?.addEventListener('click', () => {
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({ type: 'reset_state' }));
+                }
+            });
+        }
+        
+        // ========== INICIALIZACIÓN ==========
+        const panel = document.getElementById('vjPanel');
+        const header = document.getElementById('panelHeader');
+        header.addEventListener('click', () => panel.classList.toggle('collapsed'));
+        
+        function animate() {
+            timeAnim += 0.016;
+            updateDeformation();
+            const audioVal = audioActive ? smoothAudioVal : 0.3;
+            camera3D.position.x += ((Math.sin(timeAnim * 0.35) * rotX * 1.0) - camera3D.position.x) * 0.04;
+            camera3D.position.y += ((Math.cos(timeAnim * 0.55) * rotY * 0.9) - camera3D.position.y) * 0.04;
+            camera3D.lookAt(0, 0, 0);
+            renderASCII();
+            requestAnimationFrame(animate);
+        }
+        
+        window.addEventListener('resize', () => resizeCanvas());
+        setResolution(0.8); // Resolución media por defecto (buen balance rendimiento/calidad)
+        generateControls();
+        connectWebSocket();
+        animate();
+        showToast('🎛️ VJ MODE | Resolución ajustable | Capture desde móvil');
+    </script>
+</body>
+</html>
